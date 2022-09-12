@@ -17,6 +17,7 @@
   <script>
 
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+    const statusDiv = document.querySelector("div#status");
 
     const connection = new signalR
       .HubConnectionBuilder()
@@ -25,30 +26,23 @@
       .withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol())
       .build();
 
-    const statusDiv = document.querySelector("div#status");
 
-    connection.start().then(function () {
+    connection.start().then(async () => {
       statusDiv.textContent = "Connected";
 
-      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-        .then((stream) => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }).catch(err => console.error(err.toString()));
 
-          // use MediaStream Recording API
-          const recorder = new MediaRecorder(stream);
-          recorder.start();
+      // use MediaStream Recording API, since a mediastream can't be converted to anything else
+      const recorder = new MediaRecorder(stream);
+      
+      recorder.ondataavailable = async(event) => {
+        const arrayBuffer = await event.data.arrayBuffer();
+        const byteArray = new Uint8Array(arrayBuffer)
 
-          // fires every one second and passes an BlobEvent
-          recorder.ondataavailable = event => {
-            console.log(event.data);
-          }
+        connection.invoke("SendMessage", byteArray).catch(err => console.error(err.toString()));
+      }
 
-          // make data available event fire every one second
-          
-
-        }).catch(function (err) {
-          return console.error(err.toString());
-        });
-
+      recorder.start(500);
     });
 
 

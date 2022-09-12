@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/@microsoft/signalr@latest"></script>
+    <script src="https://unpkg.com/@microsoft/signalr-protocol-msgpack"></script>
+</head>
+<body>
+    <audio controls autoplay></audio>
+    <div id="status"></div>
+
+
+    <script>
+
+navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+const connection = new signalR
+.HubConnectionBuilder()
+.withUrl("https://localhost:49161/chatHub")
+.configureLogging(signalR.LogLevel.Debug)
+.withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol())
+.build();
+
+const statusDiv = document.querySelector("div.status"); 
+const audio = document.querySelector("audio");
+
+// if (window.MediaSource) {
+//   const mediaSource = new MediaSource();
+//   vidElement.src = URL.createObjectURL(mediaSource);
+
+//   mediaSource.addEventListener('sourceopen', e => {
+//     URL.revokeObjectURL(audio.src)
+//     const mime = 'video/webm; codecs="opus, vp09.00.10.08"'; 
+//     const mediaSource = e.target; 
+//     const sourceBuffer = mediaSource.addSourceBuffer(mime); // Fetch and process the video.
+//   });
+
+
+// } else {
+//   console.log('The Media Source Extensions API is not supported.');
+// }
+
+
+const audioContext = new AudioContext();
+
+connection.on("ReceiveMessage", function (message) {
+    // var li = document.createElement("li");
+    // document.getElementById("messagesList").appendChild(li);
+    // // We can assign user-supplied strings to an element's textContent because it
+    // // is not interpreted as markup. If you're assigning in any other way, you 
+    // // should be aware of possible script injection concerns.
+    // li.textContent = `${message}`;
+
+    const byteArrays = new Uint8Array([message]);
+
+  var source = audioContext.createBufferSource();
+  audioContext.decodeAudioData(byteArrays.buffer, function(buffer){
+    source.buffer = buffer
+    source.connect(audioContext.destination)
+    // source.start(time);
+    // time += source.buffer.duration
+    source.start(0)
+  }, function(){
+    console.log('error')
+  })
+
+
+});
+
+connection.start().then(function () {
+    statusDiv.textContent = "Connected";
+    
+    navigator.getUserMedia({ audio: true}, function(stream) {
+		
+            // use MediaStream Recording API
+        const recorder = new MediaRecorder(stream, {mimeType: 'audio/webm'});
+
+        // fires every one second and passes an BlobEvent
+        recorder.ondataavailable = event => {
+
+
+            audio.src = event.data;
+
+              // get the Blob from the event
+              event.data.arrayBuffer().then(buffer => new Uint8Array(buffer)).then(bytes => {
+
+                connection.invoke("SendMessage", bytes).catch(function (err) {
+                    return console.error(err.toString());
+                });
+
+                });
+            
+        };
+
+        // make data available event fire every one second
+        recorder.start(1000);
+
+
+      },
+      function(err) {
+         console.log("The following error occured: " + err.name);
+      }
+   );
+
+
+
+}).catch(function (err) {
+    return console.error(err.toString());
+});
+
+
+    </script>
+</body>
+</html>

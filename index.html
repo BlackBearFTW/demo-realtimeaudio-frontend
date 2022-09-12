@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://unpkg.com/@microsoft/signalr@latest"></script>
+  <script src="https://unpkg.com/@microsoft/signalr-protocol-msgpack"></script>
+</head>
+
+<body>
+  <div id="status"></div>
+
+  <div id="messagesList"></div>
+
+  <script>
+
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+    const connection = new signalR
+      .HubConnectionBuilder()
+      .withUrl("https://localhost:49161/chatHub")
+      .configureLogging(signalR.LogLevel.Debug)
+      .withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol())
+      .build();
+
+    const statusDiv = document.querySelector("div#status");
+
+    connection.start().then(function () {
+      statusDiv.textContent = "Connected";
+
+      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then((stream) => {
+
+          // use MediaStream Recording API
+          const recorder = new MediaRecorder(stream);
+          recorder.start();
+
+          // fires every one second and passes an BlobEvent
+          recorder.ondataavailable = event => {
+            console.log(event.data);
+          }
+
+          // make data available event fire every one second
+          
+
+        }).catch(function (err) {
+          return console.error(err.toString());
+        });
+
+    });
+
+
+      // navigator.getUserMedia({ audio: true}, function(stream) {
+      //   const recorder = new MediaRecorder(stream);
+      //   const audioContext = new AudioContext();
+      //   recorder.start();
+
+      // // fires every one second and passes an BlobEvent
+      // recorder.ondataavailable = event => {
+
+      //   event.data.arrayBuffer().then(arrayBuffer => {
+      //     // Play
+      //     let source = audioContext.createBufferSource();
+      //     audioContext.decodeAudioData(arrayBuffer, aBuffer => {
+      //       source.buffer = aBuffer;
+      //       source.connect(audioContext.destination);
+      //       source.start(0);
+      //     })
+      //   }).catch(err => console.log(err));
+
+      // };
+
+      // // make data available event fire every one second
+      // //
+
+
+      // },
+      // function(err) {
+      //  console.log("The following error occured: " + err.name);
+      // });
+
+
+
+
+
+      // connection.on("ReceiveMessage", function (message) {
+      //     var li = document.createElement("li");
+      //     document.getElementById("messagesList").appendChild(li);
+      //     li.textContent = `${message}`;
+
+      //     const byteArrays = new Uint8Array([message]);
+
+      //   var source = audioContext.createBufferSource();
+      //   audioContext.decodeAudioData(byteArrays.buffer, function(buffer){
+      //     source.buffer = buffer
+      //     source.connect(audioContext.destination)
+      //     source.start(time);
+      //     time += source.buffer.duration
+      //   }, function(){
+      //     console.log('error')
+      //   })
+
+
+      // });
+
+
+      //          // get the Blob from the event
+      // event.data.arrayBuffer().then(buffer => new Uint8Array(buffer)).then(bytes => {
+
+      // connection.invoke("SendMessage", bytes).catch(err => console.error(err.toString()));
+
+      // });
+  </script>
+</body>
+
+</html>
